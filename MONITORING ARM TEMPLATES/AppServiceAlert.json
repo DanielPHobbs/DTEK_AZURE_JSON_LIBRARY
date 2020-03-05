@@ -1,0 +1,115 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "alertEmailAddress": {
+        "type": "string",
+        "metadata": {
+          "description": "The email address to receive any alerts."
+        }
+      },
+      "appServiceName": {
+        "type": "string",
+        "defaultValue": "[uniqueString(subscription().subscriptionId, resourceGroup().name)]",
+        "metadata": {
+          "description": "The name to use when creating the app service. This must be globally unique."
+        }
+      }
+    },
+    "variables": {
+      "appServicePlanName": "AppServicePlan",
+      "actionGroupName": "MyApplicationErrors"
+    },
+    "resources": [
+      {
+        "name": "[variables('appServicePlanName')]",
+        "type": "Microsoft.Web/serverfarms",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2015-08-01",
+        "kind": "app",
+        "sku": {
+          "name": "F1",
+          "tier": "Free",
+          "size": "F1",
+          "family": "F",
+          "capacity": 1
+        },
+        "properties": {
+          "name": "[variables('appServicePlanName')]",
+          "numberOfWorkers": 1
+        }
+      },
+      {
+        "name": "[parameters('appServiceName')]",
+        "type": "Microsoft.Web/sites",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2015-08-01",
+        "kind": "web",
+        "properties": {
+          "name": "[parameters('appServiceName')]",
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+          "siteConfig": {
+            "minTlsVersion": "1.2"
+          },
+          "httpsOnly": true,
+          "clientAffinityEnabled": false
+        },
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+        ]
+      },
+      {
+        "name": "[variables('actionGroupName')]",
+        "type": "Microsoft.Insights/actionGroups",
+        "location": "global",
+        "apiVersion": "2018-03-01",
+        "properties": {
+          "groupShortName": "App Service",
+          "enabled": true,
+          "emailReceivers": [
+            {
+              "name": "Account Owner",
+              "emailAddress": "[parameters('alertEmailAddress')]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "HttpExceptions",
+        "type": "Microsoft.Insights/metricAlerts",
+        "location": "global",
+        "apiVersion": "2018-03-01",
+        "properties": {
+          "description": "[concat('The number of HTTP 5xx responses has increased beyond the specified threshold.')]",
+          "severity": 2,
+          "enabled": true,
+          "scopes": [
+            "[resourceId('Microsoft.Web/sites', parameters('appServiceName'))]"
+          ],
+          "evaluationFrequency": "PT5M",
+          "windowSize": "PT1H",
+          "criteria": {
+            "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+            "allOf": [
+              {
+                "name": "HTTP 5xx greater than 3",
+                "metricName": "Http5xx",
+                "operator": "GreaterThan",
+                "threshold": 3,
+                "timeAggregation": "Maximum"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', variables('actionGroupName'))]"
+            }
+          ],
+          "dependsOn": [
+            "[resourceId('Microsoft.Insights/actionGroups', variables('actionGroupName'))]",
+            "[resourceId('Microsoft.Web/sites', parameters('appServiceName'))]"
+          ]
+        }
+      }
+    ]
+  }
