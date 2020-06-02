@@ -1,0 +1,81 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "enterpriseIssueTrackingIngestionServiceUri": {
+        "type": "string",
+        "metadata": {
+          "description": "The webhook URL that should be invoked to create a new issue in the enterprise issue tracking system."
+        }
+      },
+      "devTeamLeadCountryCode": {
+        "type": "string",
+        "metadata": {
+          "description": "The country code of the dev team lead."
+        }
+      },
+      "devTeamLeadPhoneNumber": {
+        "type": "string",
+        "metadata": {
+          "description": "The phone number of the dev team lead."
+        }
+      },
+      "devTeamEmailAddress": {
+        "type": "string",
+        "metadata": {
+          "description": "The email address of the dev team."
+        }
+      }
+    },
+    "resources": [
+      {
+        "name": "CreateEnterpriseIssue",
+        "type": "Microsoft.Insights/actionGroups",
+        "location": "global",
+        "apiVersion": "2018-03-01",
+        "properties": {
+          "groupShortName": "Create Issue",
+          "enabled": true,
+          "webhookReceivers": [
+            {
+              "name": "Enterprise Issue Tracking Ingestion Url",
+              "serviceUri": "[parameters('enterpriseIssueTrackingIngestionServiceUri')]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "SendSmsToTeamLead",
+        "type": "Microsoft.Insights/actionGroups",
+        "location": "global",
+        "apiVersion": "2018-03-01",
+        "properties": {
+          "groupShortName": "MyApp",
+          "enabled": true,
+          "smsReceivers": [
+            {
+              "name": "Dev Team Lead",
+              "countryCode": "[parameters('devTeamLeadCountryCode')]",
+              "phoneNumber": "[parameters('devTeamLeadPhoneNumber')]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "EmailDevelopmentTeam",
+        "type": "Microsoft.Insights/actionGroups",
+        "location": "global",
+        "apiVersion": "2018-03-01",
+        "properties": {
+          "groupShortName": "MyApp",
+          "enabled": true,
+          "emailReceivers": [
+            {
+              "name": "Dev Team",
+              "emailAddress": "[parameters('devTeamEmailAddress')]"
+            }
+          ]
+        }
+      }
+    ]
+  }
